@@ -40,7 +40,7 @@ Those 4 separate regions are called **Virtual Memory** (*each process sees their
 
 In the background each process will have one or more Thread as per the requirement. And each Thread will have its own stack. Everything else will be shared such as code, data, heap, open files, and metadata. 
 
-A **Thread** is a lightweight part of a process which have a new stack and new execution context for its own task. While the process have other things one of which is an address space.
+A **Thread** is a lightweight part of a process which has its own stack and execution context, while sharing the process address space (code, data, heap, and open files).
 
 ### Signals
 
@@ -132,7 +132,13 @@ The reason that this split exists is that the tools (monitoring, logging, etc.) 
 
 - Commands like this have a problem `./prog > out.log 2>&1 | grep DATABASE` - what problem exactly?
 
-    Since we are writing the output of the `./prog ` to the out.log and combining the fd-2 to wherever the fd-1 is going then it will not work, because we can't save to a file and the same time do a pipe (`|`) at the same time because when we do the pipe the file is being written and empty in the current state so because of that the `grep` will get an empty file.
+    In this command, `>` already redirects fd-1 (`STDOUT`) to `out.log`. Then `2>&1` sends fd-2 (`STDERR`) to the same place. The pipe reads from fd-1, but fd-1 is no longer the pipe input, so `grep` receives nothing.
+
+    Use `tee` when you want both file logging and a pipe consumer:
+
+    ```bash
+    ./prog 2>&1 | tee out.log | grep DATABASE
+    ```
 
 ## Permissions
 A Linux **Permission** is used to control who can read, write, and execute the file and directories.
@@ -172,7 +178,7 @@ Where the `drwx--x--x@` is the permission indicator for owner - group - other, a
 So the first letter always say the type of the file. (these are the most common ones there are some other special ones too, but for now these are the main ones)
 - `d` indicate DIR
 - `-` indicate normal file
-- `.` indicate dotfile
+- `.` indicate normal file in `lsd` output (tool-specific styling); in standard `ls` this is shown as `-`
 
 And then the owner, group, other (each has its own 3 letter) - `drwx--x--x@`
 - `rwx` - so owner has all permissions
@@ -206,7 +212,7 @@ so when we run it, it has the owner root not the user.
     | w | modify contents | create/delete/rename files inside |
     | x | run as program | enter (cd) and access files inside |
 
-- Running any command with `sudo` is a security hazard as it run the command by bypassing the security permissions.
+- Running commands with `sudo` should be done deliberately — it bypasses normal permission checks by running as root, so a bug or malicious command has full system access.
 
 - If a setuid-root program has a bug, an attacker can use that bug to run their own code as root — without ever logging in as root.
 
@@ -272,6 +278,11 @@ journalctl -u docker --since "1 hour ago"
 ### Pitfalls
 
 - If we start the service but never enable it then it will not run on system boot, to run a service on a system boot we have to enable the service so it can run on the boot after the `PID 1`.
+
+- Typical clean debug flow when a service is broken:
+    1. `systemctl status <service>`
+    2. `journalctl -u <service> -n 50`
+    3. `journalctl -u <service> -f`
 
 ## CRON
 
