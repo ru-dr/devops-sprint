@@ -124,7 +124,8 @@ The reason that this split exists is that the tools (monitoring, logging, etc.) 
     Redirection is used to change these defaults.
 
     The Operators for redirect:
-    - `>` — send stdout to a file
+    - `>` — send stdout to a file (overwrite)
+    - `>>` - send stdout to a file (append) - recommended for the logs.
     - `2>` — send stderr to a file
     - `<` — read stdin from a file
     - `2>&1` — send stderr to wherever stdout is going
@@ -210,6 +211,115 @@ so when we run it, it has the owner root not the user.
 - If a setuid-root program has a bug, an attacker can use that bug to run their own code as root — without ever logging in as root.
 
 ## systemd (system daemon)
+A **Daemon** or **System Daemon** on Linux is a background program that runs continuously without a GUI or direct user interaction. In simple words system daemon a program that run as a `PID 1` after kernel boots. Its main job is to start, stop and monitor any background services on the machine.
 
+So it just starts any background service that is required such as Bluetooth, Wi-Fi, audio, ssh, docker, etc. at boot and restart them if they crash.
+
+We can use `systemctl` command line tool to talk with systemd.
+
+```bash
+@rudr ➜ ~ systemctl status docker
+                                      
+● docker.service - Docker Application Container Engine
+     Loaded: loaded (/usr/lib/systemd/system/docker.service; enabled; preset: disabled)
+    Drop-In: /usr/lib/systemd/system/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sun 2026-05-24 18:55:28 EDT; 1h 32min ago
+ Invocation: 11a7988247d844169f56217d59119928
+TriggeredBy: ● docker.socket
+       Docs: https://docs.docker.com
+   Main PID: 2007 (dockerd)
+      Tasks: 21
+     Memory: 87.5M (peak: 152.2M, swap: 4.2M, swap peak: 15.2M)
+        CPU: 1.340s
+     CGroup: /system.slice/docker.service
+             └─2007 /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock --selinux-enabled --userland-proxy-path /usr/bin>
+
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.085186247-04:00" level=info msg="Deleting nftables IPv4 rules" error="exit >
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.109397079-04:00" level=info msg="Deleting nftables IPv6 rules" error="exit >
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.112447981-04:00" level=info msg="Firewalld: docker zone already exists, ret>
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.868899908-04:00" level=info msg="Loading containers: done."
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.880497805-04:00" level=info msg="Docker daemon" commit=1.fc44 containerd-sn>
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.880627003-04:00" level=info msg="Initializing buildkit"
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.901679624-04:00" level=info msg="Completed buildkit initialization"
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.911421394-04:00" level=info msg="Daemon has completed initialization"
+May 24 18:55:28 fedora dockerd[2007]: time="2026-05-24T18:55:28.911539273-04:00" level=info msg="API listen on /run/docker.sock"
+May 24 18:55:28 fedora systemd[1]: Started docker.service - Docker Application Container Engine.
+lines 1-25/25 (END)
+```
+
+Here are some basic systemctl commands we can use to manage systemd.
+
+- `systemctl start/stop <service>`
+- `systemctl enable/disable <service>`
+- `systemctl status <service>`
+
+### journalctl
+
+Then comes the logs for the systemd - when something goes wrong or unexpected, we have to read log to monitor the situation.
+
+And that's where we use `journalctl` - it's a central place by systemd to manage the logs called **journal**. In the old days every system used to write their logs in their own file at `/var/log/`.
+
+common usage:
+
+```bash
+journalctl -u docker            # all logs for docker, ever
+journalctl -u docker -f         # follow live (like tail -f)
+journalctl -u docker -n 50      # last 50 lines
+journalctl -u docker --since "1 hour ago"
+```
 
 ### Pitfalls
+
+- If we start the service but never enable it then it will not run on system boot, to run a service on a system boot we have to enable the service so it can run on the boot after the `PID 1`.
+
+## CRON
+
+A **cron** is a daemon (systemd start it at boot) that reads schedule files called crontab and runs command at specific times.
+
+Each user has their own crontab assigned. we can edit it with these commands:
+
+```bash
+crontab -e        # edit your crontab
+crontab -l        # list current entries
+```
+
+Each crontab has these 6 fields:
+```
+<minute> <hour> <day-of-month> <month> <day-of-week>  <command>
+```
+
+So to trigger a backup at 2AM we should write a cron like this.
+```
+0 2 * * *  /usr/local/bin/backup-chalkdust.sh
+```
+
+Another example:
+```
+*/15 9-17 * * 1-5  /usr/local/bin/healthcheck.sh
+```
+
+It reads like this:
+every 15 minutes, between 9 AM and 5 PM, on weekdays (mon-fri), run the health check script. Classic "business hours monitoring" pattern.
+
+### logs
+
+We can find most of the system logs at this place - `/var/log/`
+
+- boot.log — messages from the boot process (services that started/failed at boot)
+- dnf.log — package manager activity (installs, updates, removals — Fedora-specific; Ubuntu calls it apt/history.log)
+- syslog or messages — general system log (everything from the kernel and various services)
+- auth.log or secure — authentication events (logins, sudo usage, ssh attempts) — important for security
+- kern.log — kernel-specific messages
+
+### Pitfalls - some caveats of cron & logs
+- When we run any command in cron it don't have a full setup it runs on a minimal setup so we have to give it a full command to run a command and shortcuts like `python3` won't work. We have to always write a full path - `/usr/bin/python3 /home/rudra/script.py`
+
+- If cron runs any command and gets anything (output/error) it tries to email the user but most systems are not setup for the email, so output gets lost. so to fix that we can save the output for ourselves.
+    ```bash
+    0 2 * * *  /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1
+    ```
+
+    `>>` appends output. `2>&1` merges errors into the same file.
+
+- Since, we are on modern systems. we use `journalctl` instead of this path because most systemd based system (e.g. fedora) funnels logs through `journalctl` instead of `/var/log/`.
