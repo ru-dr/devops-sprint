@@ -64,7 +64,7 @@ Also, these are some other signals which the kernel can pass to a running proces
 4. `SIGSEGV` (11) - segmentation fault, touched the memory you shouldn't have.
 5. `SIGHUP` (1) - terminal hung up, often repurposed to mean **reload the config**.
 
-### Pitfalls
+### Pitfalls - A Process and some common issues.
 
 - If a process is consisting a recursive function call which is not returning anything will cause a stack to overflow due to at runtime kernel allocate a specific amount of stack space (about **~8MB** in the case of Linux) at runtime and since the function call is not returning anything it will never be popped from the stack and each function call will occupy a new stack frame, and it consists of a detail of the function, local variables, etc. 
 
@@ -104,7 +104,7 @@ Because when we save the output to a file we have to separate them normal logs g
 
 The reason that this split exists is that the tools (monitoring, logging, etc.) can route them independently without parsing.
 
-### Pitfalls
+### Pitfalls - of File Descriptor and some not so normal functionality.
 
 - If we run `2> err.log` alone in `zsh`, the shell treats it as an incomplete command and enters multi-line input mode — the cursor moves to a new line, but no fresh prompt appears. It looks "stuck" but it isn't. An empty `err.log` file is created on the way in.
 
@@ -132,3 +132,84 @@ The reason that this split exists is that the tools (monitoring, logging, etc.) 
 - Commands like this have a problem `./prog > out.log 2>&1 | grep DATABASE` - what problem exactly?
 
     Since we are writing the output of the `./prog ` to the out.log and combining the fd-2 to wherever the fd-1 is going then it will not work, because we can't save to a file and the same time do a pipe (`|`) at the same time because when we do the pipe the file is being written and empty in the current state so because of that the `grep` will get an empty file.
+
+## Permissions
+A Linux **Permission** is used to control who can read, write, and execute the file and directories.
+
+The `ls -la` command will show output something like below.
+```bash
+@rudr ➜ ~ ls -la
+drwxr-xr-x@    - rudr 15 May 14:57  .aws
+drwxr-xr-x@    - rudr 15 May 13:38  .bun
+drwx------@    - rudr 23 May 19:24  .cache
+drwxr-xr-x@    - rudr 23 May 23:01  .claude
+drwxr-xr-x@    - rudr 23 May 21:06  .config
+drwxr-xr-x@    - rudr 14 May 22:55  Desktop
+drwxr-xr-x@    - rudr 15 May 14:50 󰲂 Documents
+drwxr-xr-x@    - rudr 22 May 19:02 󰉍 Downloads
+drwxr-xr-x@    - rudr 29 Apr 19:48  fex64
+drwxr-xr-x@    - rudr 25 Apr 17:29  micro
+drwxr-xr-x@    - rudr 25 Apr 10:07 󱍙 Music
+drwxr-xr-x@    - rudr 25 Apr 13:07  Notes
+drwxr-xr-x@    - rudr  8 May 13:03 󰉏 Pictures
+drwxr-xr-x@    - rudr  7 May 17:22  Postman
+drwxr-xr-x@    - rudr 15 May 13:36  proyecto
+drwxr-xr-x@    - rudr 25 Apr 10:07  Public
+.rw-r--r--@ 7.0k rudr  5 May 22:29  .hyper.js
+.rw-r--r--@  475 rudr  5 May 19:33  .nvidia-settings-rc
+.rw-r--r--@    7 rudr 25 Apr 14:36  .python_history
+.rw-r--r--@  52k rudr 21 May 12:16  .zcompdump
+.rw-------@ 120k rudr 24 May 19:07 󱆃 .zsh_history
+.rw-r--r--@ 8.9k rudr 15 May 13:37 󱆃 .zshrc
+@rudr ➜ ~ 
+```
+
+Where the `drwx--x--x@` is the permission indicator for owner - group - other, and we can read it this way.
+
+![Permissions](https://miro.medium.com/0*arXYnZrNR4cMVpwE.png)
+
+So the first letter always say the type of the file. (these are the most common ones there are some other special ones too, but for now these are the main ones)
+- `d` indicate DIR
+- `-` indicate normal file
+- `.` indicate dotfile
+
+And then the owner, group, other (each has its own 3 letter) - `drwx--x--x@`
+- `rwx` - so owner has all permissions
+- `--x` - group has execute permission
+- `--x` - other has execute permission
+
+`@` the last letter indicates that the DIR has the extended attributes or security permissions.
+
+These letters also can be represented in a numeric format. 
+![Numeric permission notation](https://tbhaxor.com/content/images/2021/08/image-37.png)
+
+To change both user and group we can use `chown`.
+
+`sudo chown user:group file/dir` 
+
+Normally when we run a program, it runs as a user. The UID is attached to the process. In the case where user run a program that tries to write on a root only file it fails. Because the process is bind to the user (you) and user don't have the permission. *setuid changes that rule for the one specific program*.
+
+In simple words the setuid runs the program as the owner of the file not as you.
+
+e.g. the `passwd` has the owner root
+so when we run it, it has the owner root not the user.
+
+
+### Pitfalls - About Permissions and security risks.
+
+- The difference of the permission based on the context (File or DIR).
+
+    |   | File | Directory |
+    |---|---|---|
+    | r | read contents | list filenames |
+    | w | modify contents | create/delete/rename files inside |
+    | x | run as program | enter (cd) and access files inside |
+
+- Running any command with `sudo` is a security hazard as it run the command by bypassing the security permissions.
+
+- If a setuid-root program has a bug, an attacker can use that bug to run their own code as root — without ever logging in as root.
+
+## systemd (system daemon)
+
+
+### Pitfalls
