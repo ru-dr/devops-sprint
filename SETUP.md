@@ -14,5 +14,3 @@ Phase 0 setup finished May 14, 2026.
 ## Verification
 
 All tools verified with version checks. ChalkDust runs locally with Postgres in Docker.
-
-Ready for Phase 1 Week 1 (Linux fundamentals).
