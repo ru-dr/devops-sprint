@@ -348,7 +348,7 @@ We can find most of the system logs at this place - `/var/log/`
 
 ### DNS
 
-A **DNS** or a _Domain Name System_ is like a phone book of the internet. It translates the human-readable domains into numerical IP addresses, so browser can locate and load the websites.
+A **DNS** or a _Domain Name System_ is like a map of the internet. It translates the human-readable domains into numerical IP addresses, so browser can locate and load the websites.
 
 DNS Process:
 
@@ -389,7 +389,7 @@ Types of DNS records:
 
 **Local OS Cache** - The device also remembers the details locally so next time if same domain is asked, it doesn't even leave the machine and - the OS hands back the cached IP instantly.
 
-**TTL** - caches can't stays forever, otherwise we can't change the DNS. so every DNS have its own assigned TTS: a fixed number of seconds It's allowed to stay cached. e.g. TTL 300 – 5 min
+**TTL** - caches can't stays forever, otherwise we can't change the DNS. so every DNS have its own assigned TTL: a fixed number of seconds It's allowed to stay cached. e.g. TTL 300 – 5 min
 
 ### TCP & UDP
 
@@ -473,7 +473,7 @@ Simple Model from server's point of view:
 
   So the first thing when someone types a URL in the browser search box is that it tries to resolve the DNS locally (browser/OS) based on the previous DNS cache. If it's not there then it asks the DNS resolver (e.g. 1.1.1.1 / 8.8.8.8). The resolver walks the chain on your behalf: it asks the root nameserver who handles the TLD. Once the TLD is found it asks the authoritative server for the IP (IPv4) of the domain. Once the IP is found the record is cached at the OS and resolver level, and that's called DNS caching.
 
-  Once the IP is cached a TCP connection is opened. Before any data is transmitted via HTTP, TCP performs a 3-way handshake to establish the connection, known as SYN, SYN-ACK, ACK. Why TCP and not UDP is because TCP is reliable and guarantees that the packets arrive in order since it is a must for sites that packets should arrive in order otherwise the browser can't render the HTML DOM correctly and the site will be broken.
+  Once the IP is returned, the laptop opens a TCP connection (and the resolver/OS cache the answer for next time). Before any data is transmitted via HTTP, TCP performs a 3-way handshake to establish the connection, known as SYN, SYN-ACK, ACK. Why TCP and not UDP is because TCP is reliable and guarantees that the packets arrive in order since it is a must for sites that packets should arrive in order otherwise the browser can't render the HTML DOM correctly and the site will be broken.
 
   If the site is based on HTTPS (Hyper Text Transfer Protocol Secure) then a raw TCP connection is required to have a TLS/SSL handshake. It works by identifying the server's identity using a TLS certificate signed by a trusted certificate authority (CA), and it also negotiates a session key to encrypt the data. Once the certificate is validated by the browser, data transmission is allowed. Otherwise, the browser raises a warning that the source might be compromised or a security issue.
 
