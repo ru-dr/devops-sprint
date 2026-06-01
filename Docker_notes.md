@@ -95,3 +95,24 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 **When to use:**
 - Single-stage: learning, small projects
 - Multi-stage: production, size-sensitive deployments
+
+### Layers & Caching
+
+**Layer** - Each Dockerfile instruction (`FROM`, `COPY`, `RUN`) creates a layer. Docker stacks them like pancakes. The image is the whole stack.
+
+**Layer-caching** - If we rebuild the version in which nothing is updated then docker just use the cached layers. but, let say we updated the file `main.py` then only that layer will gonna we rebuild, and other layers will be stay cached.
+
+**Optimization strategy:**
+- Put stuff that **rarely changes** early: `FROM`, `WORKDIR`, `COPY requirements.txt`
+- Put stuff that **often changes** late: `COPY . .` (your code)
+
+This maximizes cache hits on rebuilds, speeding up the build pipeline.
+
+Example:
+```dockerfile
+FROM python:3.14           # Cached (rarely changes)
+WORKDIR /app
+COPY requirements.txt .    # Cached (requirements rarely change)
+RUN pip install -r requirements.txt  # Cached
+COPY . .                   # Rebuilds if code changes
+CMD ["python", "main.py"]
